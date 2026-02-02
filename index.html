@@ -28,13 +28,16 @@
 
     <h1>Ma Chaussure de Foot AG</h1>
 
-    <model-viewer 
-        src='https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb,
-        alt="Un modèle 3D de chaussure de football"
-        auto-rotate 
-        camera-controls 
-        shadow-intensity="1" 
-        environment-image="neutral"
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
+<model-viewer 
+    src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
+    alt="Chaussure de foot AG"
+    auto-rotate 
+    camera-controls 
+    shadow-intensity="1"
+    style="width: 100%; height: 500px; background-color: #f0f0f0; border-radius: 10px;">
+</model-viewer>
         ar
         ar-modes="webxr scene-viewer quick-look">
         
@@ -49,3 +52,4 @@
 </body>
 
 </html>
+

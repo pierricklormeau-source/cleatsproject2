@@ -3,107 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur Chaussure Pro</title>
+    <title>Configurateur Final</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; font-family: sans-serif; overflow: hidden; }
-        
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; overflow: hidden; }
         model-viewer { width: 100%; height: 60vh; }
-
-        .ui-panel {
-            width: 100%; height: 40vh; background: #111; color: white;
-            display: flex; flex-direction: column; align-items: center;
-            padding: 20px; box-sizing: border-box; border-top: 1px solid #333;
-            overflow-y: auto;
-        }
-
-        .control-group { width: 100%; max-width: 400px; margin-bottom: 15px; }
-        .control-group label { display: block; font-size: 11px; color: #00ffcc; text-transform: uppercase; margin-bottom: 8px; font-weight: bold; }
-        
-        input[type="range"] { width: 100%; accent-color: #00ffcc; cursor: pointer; }
-        input[type="file"] { background: #222; color: white; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box; }
-
-        .value-display { float: right; color: #888; font-size: 10px; }
+        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 10px; height: 40vh; box-sizing: border-box; }
+        input[type="range"] { width: 100%; }
+        label { font-size: 12px; color: #00ffcc; }
     </style>
 </head>
 <body>
 
-    <model-viewer id="shoe" 
-        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
-        camera-controls shadow-intensity="2" exposure="1.2" ar>
-    </model-viewer>
+    <model-viewer id="shoe" src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" camera-controls shadow-intensity="2"></model-viewer>
 
-    <div class="ui-panel">
-        <div class="control-group">
-            <label>1. Choisir le Logo (PNG recommandé)</label>
-            <input type="file" id="upload" accept="image/*">
-        </div>
-
-        <div class="control-group">
-            <label>2. Taille du logo <span class="value-display" id="v-sc">1</span></label>
-            <input type="range" id="sc" min="0.1" max="10" step="0.1" value="1">
-        </div>
-
-        <div class="control-group">
-            <label>3. Position Horizontale (X) <span class="value-display" id="v-ox">0</span></label>
-            <input type="range" id="ox" min="-10" max="10" step="0.01" value="0">
-        </div>
-
-        <div class="control-group">
-            <label>4. Position Verticale (Y) <span class="value-display" id="v-oy">0</span></label>
-            <input type="range" id="oy" min="-10" max="10" step="0.01" value="0">
-        </div>
+    <div class="controls">
+        <input type="file" id="up" accept="image/*">
+        
+        <label>ZOOM :</label>
+        <input type="range" id="zoom" min="0.01" max="2" step="0.01" value="1">
+        
+        <label>DEPLACEMENT HORIZONTAL :</label>
+        <input type="range" id="posX" min="-1" max="1" step="0.001" value="0">
+        
+        <label>DEPLACEMENT VERTICAL :</label>
+        <input type="range" id="posY" min="-1" max="1" step="0.001" value="0">
     </div>
 
     <script type="module">
         const mv = document.querySelector('#shoe');
-        const sc = document.querySelector('#sc');
-        const ox = document.querySelector('#ox');
-        const oy = document.querySelector('#oy');
-        const upload = document.querySelector('#upload');
+        let texture = null;
 
-        // Fonction pour mettre à jour l'affichage des valeurs et la texture
-        const update = () => {
-            document.getElementById('v-sc').innerText = sc.value;
-            document.getElementById('v-ox').innerText = ox.value;
-            document.getElementById('v-oy').innerText = oy.value;
-
-            if (!mv.model) return;
-
-            // On boucle sur tous les matériaux pour être sûr de toucher "model"
-            mv.model.materials.forEach((material) => {
-                if (material.pbrMetallicRoughness.baseColorTexture) {
-                    material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                        scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
-                        offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
-                    });
-                }
-            });
+        const sync = () => {
+            const mat = mv.model?.materials[0];
+            if (mat && mat.pbrMetallicRoughness.baseColorTexture) {
+                // On utilise une approche directe sur la matrice de texture
+                mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
+                    scale: { u: parseFloat(document.querySelector('#zoom').value), v: parseFloat(document.querySelector('#zoom').value) },
+                    offset: { u: parseFloat(document.querySelector('#posX').value), v: parseFloat(document.querySelector('#posY').value) }
+                });
+            }
         };
 
-        upload.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const url = URL.createObjectURL(file);
-            const tex = await mv.createTexture(url);
+        document.querySelector('#up').onchange = async (e) => {
+            const url = URL.createObjectURL(e.target.files[0]);
+            texture = await mv.createTexture(url);
+            // On force le mode unique pour éviter l'effet "papier peint"
+            texture.sampler.setWrapS(33071); 
+            texture.sampler.setWrapT(33071);
             
-            // On définit le mode "Clamp" pour éviter la répétition sur les cubes
-            tex.sampler.setWrapS(33071); 
-            tex.sampler.setWrapT(33071);
+            const mat = mv.model.materials[0];
+            mat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            sync();
+        };
 
-            if (mv.model) {
-                mv.model.materials.forEach((mat) => {
-                    // On applique la nouvelle image
-                    mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
-                });
-                // On attend que la texture soit bien appliquée avant de régler la position
-                setTimeout(update, 100);
-            }
-        });
-
-        // Ecoute des mouvements de curseurs
-        [sc, ox, oy].forEach(input => input.addEventListener('input', update));
+        document.querySelectorAll('input[type="range"]').forEach(i => i.oninput = sync);
     </script>
 </body>
 </html>

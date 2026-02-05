@@ -1,98 +1,41 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur 3D - Logo Unique</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-    <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; font-family: sans-serif; }
-        model-viewer { width: 100vw; height: 100vh; }
+<script type="module">
+    const modelViewer = document.querySelector('#shoe-viewer');
+    const inputElement = document.querySelector('#image-upload');
+    const scaleInput = document.querySelector('#scale');
+    const offsetXInput = document.querySelector('#offsetX');
+    const offsetYInput = document.querySelector('#offsetY');
 
-        .custom-panel {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px);
-            padding: 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2);
-            display: flex; flex-direction: column; gap: 12px; z-index: 10; width: 280px;
+    const updateTransform = () => {
+        const material = modelViewer.model?.materials[0];
+        if (material?.pbrMetallicRoughness.baseColorTexture) {
+            const s = parseFloat(scaleInput.value);
+            material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
+                scale: { u: s, v: s },
+                offset: { u: parseFloat(offsetXInput.value), v: parseFloat(offsetYInput.value) }
+            });
         }
+    };
 
-        .control-group { display: flex; flex-direction: column; color: white; font-size: 11px; }
-        .control-group label { text-transform: uppercase; margin-bottom: 5px; opacity: 0.7; font-weight: bold; }
+    inputElement.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
         
-        input[type="range"] { width: 100%; cursor: pointer; accent-color: #fff; }
-        input[type="file"] { color: #ccc; font-size: 10px; }
+        const url = URL.createObjectURL(file);
+        const texture = await modelViewer.createTexture(url);
         
-        #ar-button { position: absolute; top: 20px; right: 20px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
-    </style>
-</head>
-<body>
+        // Force le mode "SANS RÉPÉTITION" (33071 est le code pour CLAMP_TO_EDGE dans WebGL)
+        texture.sampler.setWrapS(33071); 
+        texture.sampler.setWrapT(33071);
 
-    <model-viewer id="shoe-viewer" 
-        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
-        camera-controls auto-rotate shadow-intensity="2" exposure="1.2" ar>
+        const material = modelViewer.model.materials[0];
         
-        <button slot="ar-button" id="ar-button">VOIR EN AR</button>
+        // On applique la texture
+        material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+        
+        // Petit hack : on rafraîchit l'affichage pour forcer la prise en compte du Wrap
+        updateTransform();
+    });
 
-        <div class="custom-panel">
-            <div class="control-group">
-                <label>1. Ton Logo (PNG transparent conseillé)</label>
-                <input type="file" id="image-upload" accept="image/*">
-            </div>
-            
-            <div class="control-group">
-                <label>2. Taille du logo</label>
-                <input type="range" id="scale" min="0.5" max="10" step="0.1" value="1">
-            </div>
-
-            <div class="control-group">
-                <label>3. Position Gauche / Droite</label>
-                <input type="range" id="offsetX" min="-2" max="2" step="0.01" value="0">
-            </div>
-
-            <div class="control-group">
-                <label>4. Position Haut / Bas</label>
-                <input type="range" id="offsetY" min="-2" max="2" step="0.01" value="0">
-            </div>
-        </div>
-    </model-viewer>
-
-    <script type="module">
-        const modelViewer = document.querySelector('#shoe-viewer');
-        const inputElement = document.querySelector('#image-upload');
-        const scaleInput = document.querySelector('#scale');
-        const offsetXInput = document.querySelector('#offsetX');
-        const offsetYInput = document.querySelector('#offsetY');
-
-        const updateTransform = () => {
-            const material = modelViewer.model?.materials[0];
-            if (material?.pbrMetallicRoughness.baseColorTexture) {
-                const s = parseFloat(scaleInput.value);
-                // On utilise 1/s car l'échelle de texture est inverse
-                material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                    scale: { u: s, v: s },
-                    offset: { u: parseFloat(offsetXInput.value), v: parseFloat(offsetYInput.value) }
-                });
-            }
-        };
-
-        inputElement.addEventListener('change', async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const url = URL.createObjectURL(file);
-            const texture = await modelViewer.createTexture(url);
-            
-            // Empêcher la répétition du logo (le mode "ClampToEdge")
-            texture.sampler.setWrapS(10497); // 10497 correspond à CLAMP_TO_EDGE
-            texture.sampler.setWrapT(10497);
-
-            const material = modelViewer.model.materials[0];
-            material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-            updateTransform();
-        });
-
-        [scaleInput, offsetXInput, offsetYInput].forEach(i => i.addEventListener('input', updateTransform));
-    </script>
-</body>
-</html>
+    [scaleInput, offsetXInput, offsetYInput].forEach(i => i.addEventListener('input', updateTransform));
+</script>
 

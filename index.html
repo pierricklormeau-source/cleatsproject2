@@ -3,69 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur Unique</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <title>Configurateur de Chaussure Pro</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; }
-        model-viewer { width: 100%; height: 60vh; }
-        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 15px; }
-        input[type="range"] { width: 100%; accent-color: #00ffcc; }
-        label { font-size: 12px; color: #00ffcc; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        
+        /* Zone de la chaussure */
+        model-viewer { 
+            width: 100%; 
+            height: 60vh; 
+            background: radial-gradient(circle, #222 0%, #000 100%);
+            --poster-color: transparent;
+        }
+
+        /* Panneau de contrôle */
+        .ui-panel {
+            width: 100%; 
+            height: 40vh; 
+            background: #111;
+            border-top: 2px solid #00ffcc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
+        }
+
+        .control-block { width: 100%; max-width: 450px; margin-bottom: 15px; }
+        
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        label { font-size: 12px; color: #00ffcc; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+        .val-txt { font-family: monospace; color: #888; font-size: 12px; }
+
+        input[type="range"] { width: 100%; accent-color: #00ffcc; cursor: pointer; }
+        
+        input[type="file"] { 
+            background: #222; 
+            color: #00ffcc; 
+            padding: 10px; 
+            border-radius: 5px; 
+            width: 100%; 
+            border: 1px dashed #444; 
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            background: transparent;
+            border: 1px solid #444;
+            color: #666;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+        .btn-reset:hover { border-color: #fff; color: #fff; }
     </style>
 </head>
 <body>
 
-    <model-viewer id="shoe" src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" camera-controls shadow-intensity="2"></model-viewer>
+    <model-viewer id="shoe" 
+        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
+        camera-controls 
+        shadow-intensity="1.5" 
+        exposure="1"
+        auto-rotate-delay="3000">
+    </model-viewer>
 
-    <div class="controls">
-        <input type="file" id="up" accept="image/*">
-        
-        <label>TAILLE (ZOOM) : <span id="v-zoom">1</span></label>
-        <input type="range" id="zoom" min="0.1" max="10" step="0.1" value="1">
-        
-        <label>POSITION X : <span id="v-posX">0</span></label>
-        <input type="range" id="posX" min="-2" max="2" step="0.001" value="0">
-        
-        <label>POSITION Y : <span id="v-posY">0</span></label>
-        <input type="range" id="posY" min="-2" max="2" step="0.001" value="0">
+    <div class="ui-panel">
+        <div class="control-block">
+            <input type="file" id="upload" accept="image/*">
+        </div>
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Taille du Logo</label>
+                <span class="val-txt" id="v-sc">1.0</span>
+            </div>
+            <input type="range" id="sc" min="0.1" max="10" step="0.1" value="1">
+        </div>
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Position Horizontale (X)</label>
+                <span class="val-txt" id="v-ox">0.00</span>
+            </div>
+            <input type="range" id="ox" min="-2" max="2" step="0.005" value="0">
+        </div>
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Position Verticale (Y)</label>
+                <span class="val-txt" id="v-oy">0.00</span>
+            </div>
+            <input type="range" id="oy" min="-2" max="2" step="0.005" value="0">
+        </div>
+
+        <button class="btn-reset" onclick="location.reload()">Réinitialiser</button>
     </div>
 
     <script type="module">
         const mv = document.querySelector('#shoe');
+        const sc = document.querySelector('#sc');
+        const ox = document.querySelector('#ox');
+        const oy = document.querySelector('#oy');
+        const upload = document.querySelector('#upload');
 
-        const sync = () => {
-            const material = mv.model?.materials[0];
-            if (!material) return;
+        // Fonction pour mettre à jour la position et la taille
+        const updateLogo = () => {
+            // Mise à jour de l'affichage des textes
+            document.getElementById('v-sc').innerText = sc.value;
+            document.getElementById('v-ox').innerText = ox.value;
+            document.getElementById('v-oy').innerText = oy.value;
 
-            document.getElementById('v-zoom').innerText = document.querySelector('#zoom').value;
-            document.getElementById('v-posX').innerText = document.querySelector('#posX').value;
-            document.getElementById('v-posY').innerText = document.querySelector('#posY').value;
+            if (!mv.model) return;
 
-            const transform = {
-                scale: { u: parseFloat(document.querySelector('#zoom').value), v: parseFloat(document.querySelector('#zoom').value) },
-                offset: { u: parseFloat(document.querySelector('#posX').value), v: parseFloat(document.querySelector('#posY').value) }
-            };
-
+            // On applique les transformations au premier matériau (la chaussure)
+            const material = mv.model.materials[0];
             if (material.pbrMetallicRoughness.baseColorTexture) {
-                material.pbrMetallicRoughness.baseColorTexture.setTextureTransform(transform);
+                material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
+                    scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
+                    offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
+                });
             }
         };
 
-        document.querySelector('#up').onchange = async (e) => {
-            const url = URL.createObjectURL(e.target.files[0]);
-            const tex = await mv.createTexture(url);
-            
-            // CE BLOC ICI EST CRUCIAL POUR EVITER LA REPETITION
-            tex.sampler.setWrapS(33071); // CLAMP_TO_EDGE
-            tex.sampler.setWrapT(33071); // CLAMP_TO_EDGE
-            
-            const mat = mv.model.materials[0];
-            mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
-            
-            setTimeout(sync, 100);
-        };
+        // Gestion de l'upload d'image
+        upload.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-        document.querySelectorAll('input[type="range"]').forEach(i => i.oninput = sync);
+            const url = URL.createObjectURL(file);
+            const texture = await mv.createTexture(url);
+            
+            // MODE STICKER : Désactive la répétition du logo
+            // 33071 correspond à CLAMP_TO_EDGE dans WebGL
+            texture.sampler.setWrapS(33071); 
+            texture.sampler.setWrapT(33071);
+
+            // On applique la texture à la chaussure
+            if (mv.model) {
+                const material = mv.model.materials[0];
+                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                // On attend un court instant que la texture soit prête avant de transformer
+                setTimeout(updateLogo, 100);
+            }
+        });
+
+        // Écoute les mouvements des curseurs
+        [sc, ox, oy].forEach(input => {
+            input.addEventListener('input', updateLogo);
+        });
     </script>
 </body>
 </html>
+

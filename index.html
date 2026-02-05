@@ -3,32 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur 3D</title>
+    <title>Configurateur 3D - Custom</title>
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* Fond noir et suppression des marges */
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000000; /* Fond noir pur */
-            overflow: hidden; /* Empêche le défilement */
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000000;
+            overflow: hidden;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        /* Style du viewer 3D */
         model-viewer {
             width: 100vw;
             height: 100vh;
             --poster-color: transparent;
         }
 
-        /* Personnalisation du bouton AR (optionnel) */
+        /* Panneau de contrôle flottant */
+        .custom-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .custom-panel label {
+            color: white;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        /* Style du bouton d'upload */
+        input[type="file"]::file-selector-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: #ccc;
+        }
+
         #ar-button {
             background-color: white;
             border-radius: 4px;
@@ -37,7 +72,6 @@
             top: 20px;
             right: 20px;
             padding: 10px 20px;
-            font-family: sans-serif;
             font-weight: bold;
             cursor: pointer;
         }
@@ -46,6 +80,7 @@
 <body>
 
     <model-viewer 
+        id="shoe-viewer"
         src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
         alt="Chaussure de foot 3D"
         auto-rotate 
@@ -56,11 +91,37 @@
         ar
         ar-modes="webxr scene-viewer quick-look">
         
-        <button slot="ar-button" id="ar-button">
-            VOIR EN AR
-        </button>
+        <button slot="ar-button" id="ar-button">VOIR EN AR</button>
+
+        <div class="custom-panel">
+            <label>Personnaliser la texture</label>
+            <input type="file" id="image-upload" accept="image/png, image/jpeg">
+        </div>
 
     </model-viewer>
+
+    <script type="module">
+        const modelViewer = document.querySelector('#shoe-viewer');
+        const inputElement = document.querySelector('#image-upload');
+
+        inputElement.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Création de l'URL de l'image
+            const url = URL.createObjectURL(file);
+            
+            // Création de la texture via Model Viewer
+            const texture = await modelViewer.createTexture(url);
+
+            // Application de la texture sur le premier matériau trouvé
+            // Note : sur un modèle en blocs, cela s'appliquera sur toutes les faces
+            if (modelViewer.model && modelViewer.model.materials.length > 0) {
+                const material = modelViewer.model.materials[0];
+                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            }
+        });
+    </script>
 
 </body>
 </html>

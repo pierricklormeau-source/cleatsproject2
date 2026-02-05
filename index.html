@@ -3,61 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur Dynamique</title>
+    <title>Configurateur Dynamique Pro</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; font-family: sans-serif; overflow: hidden; }
         
-        /* On laisse de la place en bas pour les boutons */
         model-viewer { width: 100%; height: 70vh; }
 
         .ui-container {
             width: 100%;
             height: 30vh;
-            background: #1a1a1a;
+            background: #111;
             color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            padding: 10px;
+            gap: 12px;
+            padding: 20px;
             box-sizing: border-box;
-            border-top: 2px solid #333;
+            border-top: 1px solid #333;
         }
 
-        .slider-group { display: flex; align-items: center; gap: 15px; width: 90%; max-width: 400px; }
-        .slider-group label { width: 100px; font-size: 12px; color: #00ffcc; }
-        input[type="range"] { flex: 1; }
+        .slider-group { display: flex; align-items: center; gap: 15px; width: 95%; max-width: 500px; }
+        .slider-group label { width: 120px; font-size: 11px; color: #fff; text-transform: uppercase; letter-spacing: 1px; }
+        input[type="range"] { flex: 1; accent-color: #fff; cursor: pointer; }
         
-        input[type="file"] { background: #333; color: white; padding: 5px; border-radius: 5px; }
+        input[type="file"] { font-size: 12px; color: #888; }
+        
+        #ar-button { position: absolute; top: 20px; right: 20px; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; background: white; }
     </style>
 </head>
 <body>
 
     <model-viewer id="shoe" 
         src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
-        camera-controls shadow-intensity="2" exposure="1.2">
+        camera-controls shadow-intensity="2" exposure="1.2" ar>
+        <button slot="ar-button" id="ar-button">VOIR EN AR</button>
     </model-viewer>
 
     <div class="ui-container">
         <div class="slider-group">
-            <label>1. LOGO :</label>
+            <label>1. Fichier Logo</label>
             <input type="file" id="upload" accept="image/*">
         </div>
 
         <div class="slider-group">
-            <label>2. ZOOM :</label>
+            <label>2. Taille (Zoom)</label>
             <input type="range" id="sc" min="0.1" max="10" step="0.1" value="1">
         </div>
 
         <div class="slider-group">
-            <label>3. POSITION X :</label>
+            <label>3. Position X</label>
             <input type="range" id="ox" min="-2" max="2" step="0.01" value="0">
         </div>
 
         <div class="slider-group">
-            <label>4. POSITION Y :</label>
+            <label>4. Position Y</label>
             <input type="range" id="oy" min="-2" max="2" step="0.01" value="0">
         </div>
     </div>
@@ -69,15 +71,19 @@
         const ox = document.querySelector('#ox');
         const oy = document.querySelector('#oy');
 
-        const apply = () => {
-            const mat = mv.model?.materials[0];
-            if (mat?.pbrMetallicRoughness.baseColorTexture) {
-                const s = parseFloat(sc.value);
-                mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                    scale: { u: s, v: s },
-                    offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
-                });
-            }
+        // Fonction de mise à jour universelle
+        const applyTransform = () => {
+            if (!mv.model) return;
+
+            mv.model.materials.forEach((material) => {
+                const textureInfo = material.pbrMetallicRoughness.baseColorTexture;
+                if (textureInfo) {
+                    textureInfo.setTextureTransform({
+                        scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
+                        offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
+                    });
+                }
+            });
         };
 
         up.onchange = async (e) => {
@@ -86,16 +92,23 @@
             const url = URL.createObjectURL(file);
             const tex = await mv.createTexture(url);
             
-            // Forcer le mode SANS répétition
+            // On bloque la répétition (mode Clamp)
             tex.sampler.setWrapS(33071); 
             tex.sampler.setWrapT(33071);
 
-            const mat = mv.model.materials[0];
-            mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
-            apply();
+            if (mv.model) {
+                mv.model.materials.forEach((material) => {
+                    material.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+                });
+                // Un petit délai pour laisser le moteur 3D assimiler la texture
+                setTimeout(applyTransform, 150);
+            }
         };
 
-        [sc, ox, oy].forEach(input => input.oninput = apply);
+        // On lie les événements aux curseurs
+        sc.addEventListener('input', applyTransform);
+        ox.addEventListener('input', applyTransform);
+        oy.addEventListener('input', applyTransform);
     </script>
 </body>
 </html>

@@ -6,16 +6,23 @@
     <title>Configurateur de Chaussure Pro</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
     <style>
-        /* Changement ici : on permet le scroll sur le body pour ne pas bloquer le zoom */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: #000; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; 
+        }
         
-        /* Zone de la chaussure */
+        /* Zone de la chaussure : On force touch-action à none pour le zoom mobile */
         model-viewer { 
             width: 100%; 
             height: 60vh; 
             background: radial-gradient(circle, #222 0%, #000 100%);
             --poster-color: transparent;
-            /* Indispensable pour que le touch mobile fonctionne bien */
             touch-action: none; 
         }
 
@@ -31,16 +38,38 @@
             padding: 20px;
             box-sizing: border-box;
             box-shadow: 0 -10px 20px rgba(0,0,0,0.5);
-            overflow-y: auto; /* Permet de scroller les réglages si besoin */
+            overflow-y: auto;
         }
 
         .control-block { width: 100%; max-width: 450px; margin-bottom: 15px; }
         .label-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
         label { font-size: 12px; color: #00ffcc; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
         .val-txt { font-family: monospace; color: #888; font-size: 12px; }
+
         input[type="range"] { width: 100%; accent-color: #00ffcc; cursor: pointer; }
-        input[type="file"] { background: #222; color: #00ffcc; padding: 10px; border-radius: 5px; width: 100%; border: 1px dashed #444; margin-bottom: 20px; cursor: pointer; }
-        .btn-reset { background: transparent; border: 1px solid #444; color: #666; padding: 8px 20px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 11px; margin-top: 5px; }
+        
+        input[type="file"] { 
+            background: #222; 
+            color: #00ffcc; 
+            padding: 10px; 
+            border-radius: 5px; 
+            width: 100%; 
+            border: 1px dashed #444; 
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            background: transparent;
+            border: 1px solid #444;
+            color: #666;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 11px;
+            margin-top: 5px;
+        }
         .btn-reset:hover { border-color: #fff; color: #fff; }
     </style>
 </head>
@@ -52,9 +81,8 @@
         enable-pan
         shadow-intensity="1.5" 
         exposure="1"
-        auto-rotate-delay="3000"
-        interaction-prompt="auto"
-        interpolation-decay="200">
+        camera-orbit="45deg 75deg auto"
+        interaction-prompt="auto">
     </model-viewer>
 
     <div class="ui-panel">
@@ -67,7 +95,7 @@
                 <label>Taille du Logo</label>
                 <span class="val-txt" id="v-sc">1.0</span>
             </div>
-            <input type="range" id="sc" min="0.1" max="10" step="0.1" value="1">
+            <input type="range" id="sc" min="0.1" max="20" step="0.1" value="1">
         </div>
 
         <div class="control-block">
@@ -96,6 +124,7 @@
         const oy = document.querySelector('#oy');
         const upload = document.querySelector('#upload');
 
+        // Fonction pour mettre à jour la position et la taille sur tous les matériaux
         const updateLogo = () => {
             document.getElementById('v-sc').innerText = sc.value;
             document.getElementById('v-ox').innerText = ox.value;
@@ -103,15 +132,19 @@
 
             if (!mv.model) return;
 
-            const material = mv.model.materials[0];
-            if (material.pbrMetallicRoughness.baseColorTexture) {
-                material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                    scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
-                    offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
-                });
-            }
+            mv.model.materials.forEach(material => {
+                const texture = material.pbrMetallicRoughness.baseColorTexture;
+                if (texture) {
+                    texture.setTextureTransform({
+                        // On utilise 1/scale pour que le curseur soit intuitif
+                        scale: { u: 1/parseFloat(sc.value), v: 1/parseFloat(sc.value) },
+                        offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
+                    });
+                }
+            });
         };
 
+        // Gestion de l'upload d'image
         upload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -119,24 +152,32 @@
             const url = URL.createObjectURL(file);
             const texture = await mv.createTexture(url);
             
-            // On force le mode CLAMP pour éviter la répétition
+            // Paramètres pour éviter la répétition (Mode Sticker)
             texture.sampler.setWrapS(33071); 
             texture.sampler.setWrapT(33071);
 
             if (mv.model) {
-                const material = mv.model.materials[0];
-                material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-                
-                // On force aussi le mode de mélange pour la transparence du logo
-                material.setAlphaMode("BLEND"); 
-                
+                mv.model.materials.forEach(material => {
+                    // On applique à tous les matériaux qui ont une texture de base
+                    if (material.pbrMetallicRoughness.baseColorTexture) {
+                        material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+                        // Force la transparence si le logo est un PNG transparent
+                        material.setAlphaMode("BLEND");
+                    }
+                });
+                // Petit délai pour laisser la texture s'appliquer
                 setTimeout(updateLogo, 100);
             }
         });
 
+        // Écouteurs d'événements
         [sc, ox, oy].forEach(input => {
             input.addEventListener('input', updateLogo);
         });
+
+        // Sécurité : Appliquer les réglages dès que le modèle est chargé
+        mv.addEventListener('load', updateLogo);
     </script>
 </body>
 </html>
+

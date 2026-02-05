@@ -6,11 +6,13 @@
     <title>Configurateur Final</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; }
         model-viewer { width: 100%; height: 60vh; }
-        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 10px; height: 40vh; box-sizing: border-box; }
-        input[type="range"] { width: 100%; }
-        label { font-size: 12px; color: #00ffcc; }
+        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 10px; height: 40vh; box-sizing: border-box; overflow-y: auto; }
+        .row { display: flex; align-items: center; gap: 10px; }
+        label { font-size: 11px; color: #00ffcc; width: 120px; text-transform: uppercase; }
+        input[type="range"] { flex: 1; }
+        button { background: #333; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -20,24 +22,31 @@
     <div class="controls">
         <input type="file" id="up" accept="image/*">
         
-        <label>ZOOM :</label>
-        <input type="range" id="zoom" min="0.01" max="2" step="0.01" value="1">
+        <div class="row">
+            <label>Taille (Zoom) :</label>
+            <input type="range" id="zoom" min="0.01" max="5" step="0.01" value="0.5">
+        </div>
         
-        <label>DEPLACEMENT HORIZONTAL :</label>
-        <input type="range" id="posX" min="-1" max="1" step="0.001" value="0">
+        <div class="row">
+            <label>Position X :</label>
+            <input type="range" id="posX" min="-2" max="2" step="0.001" value="0">
+        </div>
         
-        <label>DEPLACEMENT VERTICAL :</label>
-        <input type="range" id="posY" min="-1" max="1" step="0.001" value="0">
+        <div class="row">
+            <label>Position Y :</label>
+            <input type="range" id="posY" min="-2" max="2" step="0.001" value="0">
+        </div>
+        
+        <button onclick="location.reload()">Réinitialiser tout</button>
     </div>
 
     <script type="module">
         const mv = document.querySelector('#shoe');
-        let texture = null;
-
+        
         const sync = () => {
             const mat = mv.model?.materials[0];
             if (mat && mat.pbrMetallicRoughness.baseColorTexture) {
-                // On utilise une approche directe sur la matrice de texture
+                // On applique les transformations
                 mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
                     scale: { u: parseFloat(document.querySelector('#zoom').value), v: parseFloat(document.querySelector('#zoom').value) },
                     offset: { u: parseFloat(document.querySelector('#posX').value), v: parseFloat(document.querySelector('#posY').value) }
@@ -46,14 +55,19 @@
         };
 
         document.querySelector('#up').onchange = async (e) => {
-            const url = URL.createObjectURL(e.target.files[0]);
-            texture = await mv.createTexture(url);
-            // On force le mode unique pour éviter l'effet "papier peint"
+            const file = e.target.files[0];
+            if(!file) return;
+            const url = URL.createObjectURL(file);
+            const texture = await mv.createTexture(url);
+            
+            // On désactive la répétition
             texture.sampler.setWrapS(33071); 
             texture.sampler.setWrapT(33071);
             
             const mat = mv.model.materials[0];
             mat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
+            
+            // On force un premier réglage pour rendre le logo visible
             sync();
         };
 

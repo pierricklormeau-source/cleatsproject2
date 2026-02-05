@@ -3,108 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur - Debug Mode</title>
+    <title>Configurateur Unique</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #1a1a1a; color: white; font-family: sans-serif; overflow: hidden; }
-        
-        /* On met une bordure rouge temporaire pour voir la zone 3D */
-        model-viewer { 
-            width: 100%; 
-            height: 60vh; 
-            background-color: #222;
-            border-bottom: 2px solid red;
-        }
-
-        .ui-panel {
-            width: 100%; height: 40vh; background: #111;
-            display: flex; flex-direction: column; align-items: center;
-            padding: 15px; box-sizing: border-box;
-        }
-
-        .control-block { width: 100%; max-width: 400px; margin-bottom: 10px; }
-        label { font-size: 11px; color: #00ffcc; text-transform: uppercase; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; }
+        model-viewer { width: 100%; height: 60vh; }
+        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 15px; }
         input[type="range"] { width: 100%; accent-color: #00ffcc; }
-        input[type="file"] { width: 100%; margin-bottom: 10px; }
-        
-        .status-msg { font-size: 10px; color: #888; margin-top: 5px; }
+        label { font-size: 12px; color: #00ffcc; }
     </style>
 </head>
 <body>
 
-    <model-viewer id="shoe" 
-        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
-        camera-controls 
-        auto-rotate
-        shadow-intensity="1" 
-        exposure="1"
-        camera-orbit="0deg 75deg 2m"
-        alt="Ma chaussure 3D">
-    </model-viewer>
+    <model-viewer id="shoe" src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" camera-controls shadow-intensity="2"></model-viewer>
 
-    <div class="ui-panel">
-        <input type="file" id="upload" accept="image/*">
+    <div class="controls">
+        <input type="file" id="up" accept="image/*">
         
-        <div class="control-block">
-            <label>Taille Logo : <span id="v-sc">1</span></label>
-            <input type="range" id="sc" min="0.01" max="15" step="0.1" value="1">
-        </div>
-
-        <div class="control-block">
-            <label>Position X : <span id="v-ox">0</span></label>
-            <input type="range" id="ox" min="-5" max="5" step="0.01" value="0">
-        </div>
-
-        <div class="control-block">
-            <label>Position Y : <span id="v-oy">0</span></label>
-            <input type="range" id="oy" min="-5" max="5" step="0.01" value="0">
-        </div>
-
-        <p class="status-msg">Si le cadre du haut est vide, le fichier .glb est corrompu ou vide.</p>
+        <label>TAILLE (ZOOM) : <span id="v-zoom">1</span></label>
+        <input type="range" id="zoom" min="0.1" max="10" step="0.1" value="1">
+        
+        <label>POSITION X : <span id="v-posX">0</span></label>
+        <input type="range" id="posX" min="-2" max="2" step="0.001" value="0">
+        
+        <label>POSITION Y : <span id="v-posY">0</span></label>
+        <input type="range" id="posY" min="-2" max="2" step="0.001" value="0">
     </div>
 
     <script type="module">
         const mv = document.querySelector('#shoe');
-        const sc = document.querySelector('#sc');
-        const ox = document.querySelector('#ox');
-        const oy = document.querySelector('#oy');
 
-        const update = () => {
-            document.getElementById('v-sc').innerText = sc.value;
-            document.getElementById('v-ox').innerText = ox.value;
-            document.getElementById('v-oy').innerText = oy.value;
+        const sync = () => {
+            const material = mv.model?.materials[0];
+            if (!material) return;
 
-            if (!mv.model) return;
+            document.getElementById('v-zoom').innerText = document.querySelector('#zoom').value;
+            document.getElementById('v-posX').innerText = document.querySelector('#posX').value;
+            document.getElementById('v-posY').innerText = document.querySelector('#posY').value;
 
-            mv.model.materials.forEach((mat) => {
-                if (mat.pbrMetallicRoughness.baseColorTexture) {
-                    mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                        scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
-                        offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
-                    });
-                }
-            });
-        };
+            const transform = {
+                scale: { u: parseFloat(document.querySelector('#zoom').value), v: parseFloat(document.querySelector('#zoom').value) },
+                offset: { u: parseFloat(document.querySelector('#posX').value), v: parseFloat(document.querySelector('#posY').value) }
+            };
 
-        document.querySelector('#upload').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const url = URL.createObjectURL(file);
-            const tex = await mv.createTexture(url);
-            tex.sampler.setWrapS(33071); 
-            tex.sampler.setWrapT(33071);
-
-            if (mv.model) {
-                mv.model.materials.forEach(m => m.pbrMetallicRoughness.baseColorTexture.setTexture(tex));
-                update();
+            if (material.pbrMetallicRoughness.baseColorTexture) {
+                material.pbrMetallicRoughness.baseColorTexture.setTextureTransform(transform);
             }
         };
 
-        [sc, ox, oy].forEach(i => i.oninput = update);
-        
-        // Log pour vérifier si le modèle charge
-        mv.addEventListener('load', () => console.log("Modèle chargé !"));
-        mv.addEventListener('error', (e) => console.error("Erreur de chargement:", e));
+        document.querySelector('#up').onchange = async (e) => {
+            const url = URL.createObjectURL(e.target.files[0]);
+            const tex = await mv.createTexture(url);
+            
+            // CE BLOC ICI EST CRUCIAL POUR EVITER LA REPETITION
+            tex.sampler.setWrapS(33071); // CLAMP_TO_EDGE
+            tex.sampler.setWrapT(33071); // CLAMP_TO_EDGE
+            
+            const mat = mv.model.materials[0];
+            mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+            
+            setTimeout(sync, 100);
+        };
+
+        document.querySelectorAll('input[type="range"]').forEach(i => i.oninput = sync);
     </script>
 </body>
 </html>

@@ -3,75 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurateur Final</title>
+    <title>Configurateur Chaussure - Test Précision</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; }
-        model-viewer { width: 100%; height: 60vh; }
-        .controls { padding: 20px; background: #111; display: flex; flex-direction: column; gap: 10px; height: 40vh; box-sizing: border-box; overflow-y: auto; }
-        .row { display: flex; align-items: center; gap: 10px; }
-        label { font-size: 11px; color: #00ffcc; width: 120px; text-transform: uppercase; }
-        input[type="range"] { flex: 1; }
-        button { background: #333; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; color: white; font-family: sans-serif; overflow: hidden; }
+        
+        model-viewer { width: 100%; height: 55vh; background-color: #050505; }
+
+        .ui-panel {
+            width: 100%; height: 45vh; background: #111;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 15px; box-sizing: border-box; border-top: 2px solid #00ffcc;
+            overflow-y: auto;
+        }
+
+        .control-block { width: 100%; max-width: 500px; margin-bottom: 12px; }
+        
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        label { font-size: 11px; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; }
+        .val-txt { font-family: monospace; color: #888; font-size: 11px; }
+
+        input[type="range"] { width: 100%; accent-color: #00ffcc; cursor: pointer; }
+        input[type="file"] { background: #222; color: #00ffcc; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; border: 1px solid #333; }
+        
+        button { margin-top: 10px; background: transparent; border: 1px solid #444; color: #666; padding: 5px 15px; cursor: pointer; font-size: 10px; }
+        button:hover { color: white; border-color: white; }
     </style>
 </head>
 <body>
 
-    <model-viewer id="shoe" src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" camera-controls shadow-intensity="2"></model-viewer>
+    <model-viewer id="shoe" 
+        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
+        camera-controls shadow-intensity="2" exposure="1.2" ar>
+    </model-viewer>
 
-    <div class="controls">
-        <input type="file" id="up" accept="image/*">
-        
-        <div class="row">
-            <label>Taille (Zoom) :</label>
-            <input type="range" id="zoom" min="0.01" max="5" step="0.01" value="0.5">
+    <div class="ui-panel">
+        <div class="control-block">
+            <input type="file" id="upload" accept="image/*">
         </div>
-        
-        <div class="row">
-            <label>Position X :</label>
-            <input type="range" id="posX" min="-2" max="2" step="0.001" value="0">
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Taille (Zoom)</label>
+                <span class="val-txt" id="v-sc">1.0</span>
+            </div>
+            <input type="range" id="sc" min="0.01" max="20" step="0.01" value="1">
         </div>
-        
-        <div class="row">
-            <label>Position Y :</label>
-            <input type="range" id="posY" min="-2" max="2" step="0.001" value="0">
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Position Horizontale (X)</label>
+                <span class="val-txt" id="v-ox">0.000</span>
+            </div>
+            <input type="range" id="ox" min="-5" max="5" step="0.001" value="0">
         </div>
-        
-        <button onclick="location.reload()">Réinitialiser tout</button>
+
+        <div class="control-block">
+            <div class="label-row">
+                <label>Position Verticale (Y)</label>
+                <span class="val-txt" id="v-oy">0.000</span>
+            </div>
+            <input type="range" id="oy" min="-5" max="5" step="0.001" value="0">
+        </div>
+
+        <button onclick="location.reload()">Réinitialiser le configurateur</button>
     </div>
 
     <script type="module">
         const mv = document.querySelector('#shoe');
-        
-        const sync = () => {
-            const mat = mv.model?.materials[0];
-            if (mat && mat.pbrMetallicRoughness.baseColorTexture) {
-                // On applique les transformations
-                mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                    scale: { u: parseFloat(document.querySelector('#zoom').value), v: parseFloat(document.querySelector('#zoom').value) },
-                    offset: { u: parseFloat(document.querySelector('#posX').value), v: parseFloat(document.querySelector('#posY').value) }
-                });
-            }
+        const sc = document.querySelector('#sc');
+        const ox = document.querySelector('#ox');
+        const oy = document.querySelector('#oy');
+        const upload = document.querySelector('#upload');
+
+        const update = () => {
+            // Mise à jour de l'affichage des chiffres
+            document.getElementById('v-sc').innerText = parseFloat(sc.value).toFixed(2);
+            document.getElementById('v-ox').innerText = parseFloat(ox.value).toFixed(3);
+            document.getElementById('v-oy').innerText = parseFloat(oy.value).toFixed(3);
+
+            if (!mv.model) return;
+
+            // On applique les réglages à tous les matériaux (surtout le matériau "model")
+            mv.model.materials.forEach((material) => {
+                if (material.pbrMetallicRoughness.baseColorTexture) {
+                    material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
+                        scale: { u: parseFloat(sc.value), v: parseFloat(sc.value) },
+                        offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
+                    });
+                }
+            });
         };
 
-        document.querySelector('#up').onchange = async (e) => {
+        upload.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if(!file) return;
-            const url = URL.createObjectURL(file);
-            const texture = await mv.createTexture(url);
-            
-            // On désactive la répétition
-            texture.sampler.setWrapS(33071); 
-            texture.sampler.setWrapT(33071);
-            
-            const mat = mv.model.materials[0];
-            mat.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-            
-            // On force un premier réglage pour rendre le logo visible
-            sync();
-        };
+            if (!file) return;
 
-        document.querySelectorAll('input[type="range"]').forEach(i => i.oninput = sync);
+            const url = URL.createObjectURL(file);
+            const tex = await mv.createTexture(url);
+            
+            // Mode CLAMP : Le logo ne se répète pas (évite l'effet "lignes partout")
+            tex.sampler.setWrapS(33071); 
+            tex.sampler.setWrapT(33071);
+
+            if (mv.model) {
+                mv.model.materials.forEach((mat) => {
+                    mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+                });
+                // Petite pause pour laisser la carte graphique respirer
+                setTimeout(update, 50);
+            }
+        });
+
+        // Activation des curseurs en temps réel
+        [sc, ox, oy].forEach(input => input.addEventListener('input', update));
     </script>
 </body>
 </html>

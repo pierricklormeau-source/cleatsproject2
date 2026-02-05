@@ -1,41 +1,102 @@
-<script type="module">
-    const modelViewer = document.querySelector('#shoe-viewer');
-    const inputElement = document.querySelector('#image-upload');
-    const scaleInput = document.querySelector('#scale');
-    const offsetXInput = document.querySelector('#offsetX');
-    const offsetYInput = document.querySelector('#offsetY');
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurateur Dynamique</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; font-family: sans-serif; }
+        
+        /* On laisse de la place en bas pour les boutons */
+        model-viewer { width: 100%; height: 70vh; }
 
-    const updateTransform = () => {
-        const material = modelViewer.model?.materials[0];
-        if (material?.pbrMetallicRoughness.baseColorTexture) {
-            const s = parseFloat(scaleInput.value);
-            material.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
-                scale: { u: s, v: s },
-                offset: { u: parseFloat(offsetXInput.value), v: parseFloat(offsetYInput.value) }
-            });
+        .ui-container {
+            width: 100%;
+            height: 30vh;
+            background: #1a1a1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            border-top: 2px solid #333;
         }
-    };
 
-    inputElement.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+        .slider-group { display: flex; align-items: center; gap: 15px; width: 90%; max-width: 400px; }
+        .slider-group label { width: 100px; font-size: 12px; color: #00ffcc; }
+        input[type="range"] { flex: 1; }
         
-        const url = URL.createObjectURL(file);
-        const texture = await modelViewer.createTexture(url);
-        
-        // Force le mode "SANS RÉPÉTITION" (33071 est le code pour CLAMP_TO_EDGE dans WebGL)
-        texture.sampler.setWrapS(33071); 
-        texture.sampler.setWrapT(33071);
+        input[type="file"] { background: #333; color: white; padding: 5px; border-radius: 5px; }
+    </style>
+</head>
+<body>
 
-        const material = modelViewer.model.materials[0];
-        
-        // On applique la texture
-        material.pbrMetallicRoughness.baseColorTexture.setTexture(texture);
-        
-        // Petit hack : on rafraîchit l'affichage pour forcer la prise en compte du Wrap
-        updateTransform();
-    });
+    <model-viewer id="shoe" 
+        src="https://raw.githubusercontent.com/pierricklormeau-source/cleatsproject2/main/base.glb" 
+        camera-controls shadow-intensity="2" exposure="1.2">
+    </model-viewer>
 
-    [scaleInput, offsetXInput, offsetYInput].forEach(i => i.addEventListener('input', updateTransform));
-</script>
+    <div class="ui-container">
+        <div class="slider-group">
+            <label>1. LOGO :</label>
+            <input type="file" id="upload" accept="image/*">
+        </div>
+
+        <div class="slider-group">
+            <label>2. ZOOM :</label>
+            <input type="range" id="sc" min="0.1" max="10" step="0.1" value="1">
+        </div>
+
+        <div class="slider-group">
+            <label>3. POSITION X :</label>
+            <input type="range" id="ox" min="-2" max="2" step="0.01" value="0">
+        </div>
+
+        <div class="slider-group">
+            <label>4. POSITION Y :</label>
+            <input type="range" id="oy" min="-2" max="2" step="0.01" value="0">
+        </div>
+    </div>
+
+    <script type="module">
+        const mv = document.querySelector('#shoe');
+        const up = document.querySelector('#upload');
+        const sc = document.querySelector('#sc');
+        const ox = document.querySelector('#ox');
+        const oy = document.querySelector('#oy');
+
+        const apply = () => {
+            const mat = mv.model?.materials[0];
+            if (mat?.pbrMetallicRoughness.baseColorTexture) {
+                const s = parseFloat(sc.value);
+                mat.pbrMetallicRoughness.baseColorTexture.setTextureTransform({
+                    scale: { u: s, v: s },
+                    offset: { u: parseFloat(ox.value), v: parseFloat(oy.value) }
+                });
+            }
+        };
+
+        up.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            const tex = await mv.createTexture(url);
+            
+            // Forcer le mode SANS répétition
+            tex.sampler.setWrapS(33071); 
+            tex.sampler.setWrapT(33071);
+
+            const mat = mv.model.materials[0];
+            mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+            apply();
+        };
+
+        [sc, ox, oy].forEach(input => input.oninput = apply);
+    </script>
+</body>
+</html>
 
